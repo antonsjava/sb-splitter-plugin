@@ -22,12 +22,13 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
+import static java.util.Collections.list;
+import java.util.Date;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
-import static org.codehaus.plexus.util.FileUtils.filename;
 
 /**
  *
@@ -262,6 +263,7 @@ public class SBSplitter {
         }
         List<String> cp = loadCP();
         generateCPScript(cp, appFiles, libFiles);
+        updateModificationDate(new File(destDir + destLibFolder), 0);
     }
 
     public String config() {
@@ -291,5 +293,17 @@ public class SBSplitter {
         }
     
         return sb.toString();
+    }
+    
+    private void updateModificationDate(File folder, long time) {
+        folder.setLastModified(time);
+        File[] children = folder.listFiles();
+        if(children == null) return;
+        for(File file : children) {
+            file.setLastModified(time);
+            if(file.isDirectory()) {
+                updateModificationDate(file, time);
+            }
+        }
     }
 }
