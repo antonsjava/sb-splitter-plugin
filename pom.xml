@@ -9,6 +9,10 @@
     <artifactId>sb-splitter-plugin</artifactId>
     <version>1.0</version>
     <packaging>maven-plugin</packaging>
+    
+    <name>sb-splitter-plugin</name>
+    <description>Spring boot jar disassembler</description>
+    <url>https://github.com/antonsjava/sb-splitter-plugin</url>
 
     <licenses>
         <license>
