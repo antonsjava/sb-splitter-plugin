@@ -22,13 +22,12 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
-import static java.util.Collections.list;
-import java.util.Date;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
+import org.apache.maven.plugin.logging.Log;
 
 /**
  *
@@ -243,8 +242,9 @@ public class SBSplitter {
 
     }
 
-    public void split() {
+    public void split(Log log) {
         unzip();
+        log.info("[SB split] unzipped");
         List<String> appFiles = new ArrayList<>();
         List<String> libFiles = new ArrayList<>();
         List<String> files = new ArrayList<>();
@@ -261,9 +261,12 @@ public class SBSplitter {
             }
             moveFile(oldname, newname);
         }
+        log.info("[SB split] lib modules splitted. lib count: " + libFiles.size() + " app count: " + appFiles.size());
         List<String> cp = loadCP();
         generateCPScript(cp, appFiles, libFiles);
+        log.info("[SB split] classpath script generated");
         updateModificationDate(new File(destDir + destLibFolder), 0);
+        log.info("[SB split] lib modules freeze modification time");
     }
 
     public String config() {

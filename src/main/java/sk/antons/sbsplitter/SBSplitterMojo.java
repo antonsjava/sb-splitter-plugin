@@ -50,9 +50,12 @@ public class SBSplitterMojo extends AbstractMojo {
     private String cpLibPrefix; 
     
     @Parameter(property = "appModuleNames", required = false )
-    private String[] appModuleNames = new String[]{"activation-1.1.1.jar"};
+    private String[] appModuleNames = null;
     @Parameter(property = "appModulePackages", required = false )
-    private String[] appModulePackages = new String[]{"camp.xit"};
+    private String[] appModulePackages = null;
+    
+    @Parameter(property = "copies", required = false )
+    private Copy[] copies = null;
     
 	private static String initProperty(String value, String defaultValue, boolean endswithslash) {
 		if(value == null) value = defaultValue;
@@ -91,35 +94,53 @@ public class SBSplitterMojo extends AbstractMojo {
         splitter.setFilename(filename);
         splitter.setSourceLibFolder(sourceLibFolder);
         printConf();
-        getLog().info("splitting " + splitter.getFilename() + " to " + splitter.getDestDir());
-        splitter.split();
-        getLog().info("splitting done");
+        getLog().info("[SB split] splitting " + splitter.getFilename() + " to " + splitter.getDestDir());
+        splitter.split(getLog());
+        getLog().info("[SB split] splitting done");
+        if(copies != null) {
+            for(Copy copy : copies) {
+                getLog().info("");
+                copy.copy(getLog());
+            }
+        }
+        
     }
 
     private void printConf() {
-        getLog().info("sbFile: " + filename);
-        getLog().info("destDir: " + destDir);
-        getLog().info("sourceLibFolder: " + sourceLibFolder);
-        getLog().info("destLibFolder: " + destLibFolder);
-        getLog().info("destAppFolder: " + destAppFolder);
+        getLog().info("[SB split] conf sbFile: " + filename);
+        getLog().info("[SB split] conf destDir: " + destDir);
+        getLog().info("[SB split] conf sourceLibFolder: " + sourceLibFolder);
+        getLog().info("[SB split] conf destLibFolder: " + destLibFolder);
+        getLog().info("[SB split] conf destAppFolder: " + destAppFolder);
         getLog().info("");
-        getLog().info("cpFile: " + cpFile);
-        getLog().info("cpScript: " + cpScript);
-        getLog().info("cpClassesPrefix: " + cpClassesPrefix);
-        getLog().info("cpAppPrefix: " + cpAppPrefix);
-        getLog().info("cpLibPrefix: " + cpLibPrefix);
+        getLog().info("[SB split] conf cpFile: " + cpFile);
+        getLog().info("[SB split] conf cpScript: " + cpScript);
+        getLog().info("[SB split] conf cpClassesPrefix: " + cpClassesPrefix);
+        getLog().info("[SB split] conf cpAppPrefix: " + cpAppPrefix);
+        getLog().info("[SB split] conf cpLibPrefix: " + cpLibPrefix);
 
         if((appModuleNames != null) && (appModuleNames.length > 0)) {
             getLog().info("");
             for(String appModuleName : appModuleNames) {
-                getLog().info("appModuleName: " + appModuleName);
+                getLog().info("[SB split] conf appModuleName: " + appModuleName);
             }
         }
+
         if((appModulePackages != null) && (appModulePackages.length > 0)) {
             getLog().info("");
             for(String appModuleName : appModulePackages) {
-                getLog().info("appModulePackage: " + appModuleName);
+                getLog().info("[SB split] conf appModulePackage: " + appModuleName);
             }
         }
+
+        if((copies != null) && (copies.length > 0)) {
+            getLog().info("");
+            for(Copy copy : copies) {
+                getLog().info("[SB split] conf copy");
+                getLog().info("           from: " + copy.getFrom());
+                getLog().info("           to:   " + copy.getTo());
+            }
+        }
+        getLog().info("");
     }
 }
