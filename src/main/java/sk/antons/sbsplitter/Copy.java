@@ -18,8 +18,6 @@ package sk.antons.sbsplitter;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
-import java.util.Iterator;
-import static jdk.vm.ci.sparc.SPARC.f2;
 import org.apache.maven.plugin.logging.Log;
 
 /**
