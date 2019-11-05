@@ -54,8 +54,29 @@ public class SBSplitterMojo extends AbstractMojo {
     @Parameter(property = "appModulePackages", required = false )
     private String[] appModulePackages = new String[]{"camp.xit"};
     
+	private static String initProperty(String value, String defaultValue, boolean endswithslash) {
+		if(value == null) value = defaultValue;
+		if(endswithslash && (!value.endsWith("/"))) value = value + "/"; 
+        return value;
+	}
+
+	private void initProperties() {
+        
+        destDir = initProperty(destDir, "target/sb/", true);
+        sourceLibFolder = initProperty(sourceLibFolder, "BOOT-INF/lib/", true);
+        destLibFolder = initProperty(destLibFolder, "BOOT-INF/lib/", true);
+        destAppFolder = initProperty(destAppFolder, "BOOT-INF/app/", true);
+    
+        cpFile = initProperty(cpFile, "BOOT-INF/classes/classpath.txt", false);
+        cpScript = initProperty(cpScript, "BOOT-INF/classpath.sh", false);
+        cpClassesPrefix = initProperty(cpClassesPrefix, "./", true);
+        cpAppPrefix = initProperty(cpAppPrefix, "app/", true);
+        cpLibPrefix = initProperty(cpLibPrefix, "lib/", true);
+		
+	}
 
     public void execute() throws MojoExecutionException {
+        initProperties();
         SBSplitter splitter = new SBSplitter();
         splitter.setAppModuleNames(appModuleNames);
         splitter.setAppModulePackages(appModulePackages);
@@ -69,9 +90,36 @@ public class SBSplitterMojo extends AbstractMojo {
         splitter.setDestLibFolder(destLibFolder);
         splitter.setFilename(filename);
         splitter.setSourceLibFolder(sourceLibFolder);
-        getLog().info("configuration" + splitter.config());
+        printConf();
         getLog().info("splitting " + splitter.getFilename() + " to " + splitter.getDestDir());
         splitter.split();
         getLog().info("splitting done");
+    }
+
+    private void printConf() {
+        getLog().info("sbFile: " + filename);
+        getLog().info("destDir: " + destDir);
+        getLog().info("sourceLibFolder: " + sourceLibFolder);
+        getLog().info("destLibFolder: " + destLibFolder);
+        getLog().info("destAppFolder: " + destAppFolder);
+        getLog().info("");
+        getLog().info("cpFile: " + cpFile);
+        getLog().info("cpScript: " + cpScript);
+        getLog().info("cpClassesPrefix: " + cpClassesPrefix);
+        getLog().info("cpAppPrefix: " + cpAppPrefix);
+        getLog().info("cpLibPrefix: " + cpLibPrefix);
+
+        if((appModuleNames != null) && (appModuleNames.length > 0)) {
+            getLog().info("");
+            for(String appModuleName : appModuleNames) {
+                getLog().info("appModuleName: " + appModuleName);
+            }
+        }
+        if((appModulePackages != null) && (appModulePackages.length > 0)) {
+            getLog().info("");
+            for(String appModuleName : appModulePackages) {
+                getLog().info("appModulePackage: " + appModuleName);
+            }
+        }
     }
 }
