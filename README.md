@@ -32,8 +32,9 @@
   can be application dependencies.
 
   The plugin uses two ways to identify 'application' jars.
-   - list names of those jars. (todo: possibility to name jar with asterix wildcard)
-   - specify package prefixes stored in those jars. 
+   - list names of those jars. (wildcards '*' and '?' can be used)
+   - specify package prefixes stored in those jars. (if your modules has packages like 
+	 org.company.project.... you can specify prefix like org.company) 
 
 
 ### Assemble files for docker build
@@ -43,7 +44,7 @@
 
   It can be done by many plugins to simplify this I add possibility to configure set of pair 
    - from file - to file
-   - from directory - to directory
+   - from directory content - to directory content
   And the plugin copies specified files. 
 
 ### Docker build

@@ -133,9 +133,20 @@ public class SBSplitter {
         return isApplicationModuleByPackage(filename);
     }
     
+    private List<WildMatcher> wildMathers = null;
+    private List<WildMatcher> wildMathers() {
+        if(wildMathers == null) {
+            wildMathers = new ArrayList<>();
+            for(String appModuleName : appModuleNames) {
+                wildMathers.add(WildMatcher.instance(appModuleName));
+            }
+        }
+        return wildMathers;
+    }
     private boolean isApplicationModuleByName(String filename) {
         if(appModuleNames == null) return false;
         for(String appName : appModuleNames) { if(appName.equals(filename)) return true; }
+        for(WildMatcher wm : wildMathers()) { if(wm.match(filename)) return true; }
         return false;
     }
     
