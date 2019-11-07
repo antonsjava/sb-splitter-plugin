@@ -87,7 +87,7 @@
 ## The plugin usage example
 
   Lets have SB application with following directory structure. The example can be simplified 
-  but in this way can demonstrate more options
+  but in this way I can demonstrate more options
 ```
   src/
     main/
@@ -97,6 +97,9 @@
       docker-assembly/
         start-application.sh
 ```
+  The Dockerfile epects that application lib, app, classes and assembly folders 
+  will be a direct subdirectories. This structure will be created in pom.xml file
+  Each part is copied independently. So big lib part is separate level. 
   The Dockerfile looks like 
 ```
 FROM openjdk:11-jre-slim
@@ -110,6 +113,8 @@ RUN chmod a+x /spring/start-application.sh
 
 ENTRYPOINT /spring/start-application.sh
 ```
+  The start of application can be done directly by calling java. But in this way 
+  it is possible to demonstrate adding some other resources to unpacked jar.
   The start-application.sh looks like 
 ```bash
 #!/bin/bash
@@ -127,6 +132,17 @@ java -Djava.security.egd=file:/dev/./urandom -cp $SBCP sk.antons.test.TestApplic
 
 # do some stuff
 ```
+  There will be sequence of plugins configured to get result.
+  - maven-dependency-plugin creates text file with classpath defined by maven project
+	The file will be stored as resource in spring boot file. So after unzipping them 
+	it will be in BOOT-INF/classses folder.
+  - spring-boot-maven-plugin creates spring boot application jar
+  - sb-splitter-plugin unzip spring boot jar into target/sb folder. Jars from 
+	target/sb/BOOT-INF/lib, which contain package sk.antons are moved to 
+	target/sb/BOOT-INF/app. Then Dockerfile is copied into target/sb/BOOT-INF folder 
+	(If becomes root od docker building) and assembly folder is copied into 
+	target/sb/BOOT-INF/assembly 
+  - docker-exec-plugin startd docker building process from target/sb/BOOT-INF folder 
   The plugin usage looks like 
 ```
   <plugins>
