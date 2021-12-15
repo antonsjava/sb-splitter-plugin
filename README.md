@@ -177,9 +177,9 @@ java -Djava.security.egd=file:/dev/./urandom -cp $SBCP sk.antons.test.TestApplic
       </executions>
     </plugin>
     <plugin> <!-- split spring boot jar -->
-      <groupId>com.github.antonsjava</groupId>
+      <groupId>io.github.antonsjava</groupId>
       <artifactId>sb-splitter-plugin</artifactId>
-      <version>1.3</version>
+      <version>LATESTVERSION</version>
       <executions>
         <execution>
           <goals>
