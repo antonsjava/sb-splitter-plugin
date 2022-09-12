@@ -18,14 +18,19 @@ package sk.antons.sbsplitter;
 
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoExecutionException;
-
 import org.apache.maven.plugins.annotations.LifecyclePhase;
 import org.apache.maven.plugins.annotations.Mojo;
+
 import org.apache.maven.plugins.annotations.Parameter;
+import org.apache.maven.plugins.annotations.ResolutionScope;
+import org.apache.maven.project.MavenProject;
 
 
-@Mojo( name = "split", defaultPhase = LifecyclePhase.PACKAGE )
+@Mojo( name = "split", defaultPhase = LifecyclePhase.PACKAGE, requiresDependencyResolution = ResolutionScope.RUNTIME)
 public class SBSplitterMojo extends AbstractMojo {
+
+    @Parameter(defaultValue = "${project}", readonly = true, required = true)
+    private MavenProject project;
     
     @Parameter(property = "sbFile", defaultValue = "target/${project.build.finalName}.jar", required = false )
     private String filename;
@@ -40,8 +45,10 @@ public class SBSplitterMojo extends AbstractMojo {
     
     @Parameter(property = "cpFile", defaultValue = "BOOT-INF/classes/classpath.txt", required = false )
     private String cpFile; 
-    @Parameter(property = "cpScript", defaultValue = "BOOT-INF/classpath.sh", required = false )
+    @Parameter(property = "cpScript", defaultValue = "BOOT-INF/assembly/classpath.sh", required = false )
     private String cpScript; 
+    @Parameter(property = "cpArg", defaultValue = "BOOT-INF/assembly/cp.arg", required = false )
+    private String cpArg; 
     @Parameter(property = "cpClassesPrefix", defaultValue = "./", required = false )
     private String cpClassesPrefix; 
     @Parameter(property = "cpAppPrefix", defaultValue = "app/", required = false )
@@ -71,7 +78,8 @@ public class SBSplitterMojo extends AbstractMojo {
         destAppFolder = initProperty(destAppFolder, "BOOT-INF/app/", true);
     
         cpFile = initProperty(cpFile, "BOOT-INF/classes/classpath.txt", false);
-        cpScript = initProperty(cpScript, "BOOT-INF/classpath.sh", false);
+        cpScript = initProperty(cpScript, "BOOT-INF/assembly/classpath.sh", false);
+        cpArg = initProperty(cpArg, "BOOT-INF/assembly/cp.arg", false);
         cpClassesPrefix = initProperty(cpClassesPrefix, "./", true);
         cpAppPrefix = initProperty(cpAppPrefix, "app/", true);
         cpLibPrefix = initProperty(cpLibPrefix, "lib/", true);
@@ -81,6 +89,7 @@ public class SBSplitterMojo extends AbstractMojo {
     public void execute() throws MojoExecutionException {
         initProperties();
         SBSplitter splitter = new SBSplitter();
+        splitter.setProject(project);
         splitter.setAppModuleNames(appModuleNames);
         splitter.setAppModulePackages(appModulePackages);
         splitter.setCpAppPrefix(cpAppPrefix);
@@ -88,6 +97,7 @@ public class SBSplitterMojo extends AbstractMojo {
         splitter.setCpFile(cpFile);
         splitter.setCpLibPrefix(cpLibPrefix);
         splitter.setCpScript(cpScript);
+        splitter.setCpArg(cpArg);
         splitter.setDestAppFolder(destAppFolder);
         splitter.setDestDir(destDir);
         splitter.setDestLibFolder(destLibFolder);
@@ -115,6 +125,7 @@ public class SBSplitterMojo extends AbstractMojo {
         getLog().info("");
         getLog().info("[SB split] conf cpFile: " + cpFile);
         getLog().info("[SB split] conf cpScript: " + cpScript);
+        getLog().info("[SB split] conf cpArg: " + cpArg);
         getLog().info("[SB split] conf cpClassesPrefix: " + cpClassesPrefix);
         getLog().info("[SB split] conf cpAppPrefix: " + cpAppPrefix);
         getLog().info("[SB split] conf cpLibPrefix: " + cpLibPrefix);

@@ -25,15 +25,21 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
+import org.apache.maven.artifact.DependencyResolutionRequiredException;
 import org.apache.maven.plugin.logging.Log;
+import org.apache.maven.project.MavenProject;
 
 /**
  *
  * @author antons
  */
 public class SBSplitter {
+
+    private MavenProject project;
 
     private String filename;
     private String destDir; 
@@ -43,6 +49,7 @@ public class SBSplitter {
     
     private String cpFile; 
     private String cpScript; 
+    private String cpArg; 
     private String cpClassesPrefix; 
     private String cpAppPrefix; 
     private String cpLibPrefix; 
@@ -50,6 +57,8 @@ public class SBSplitter {
     private String[] appModuleNames;
     private String[] appModulePackages;
 
+    public MavenProject getProject() { return project; }
+    public void setProject(MavenProject project) { this.project = project; }
     public String getFilename() { return filename; }
     public void setFilename(String filename) { this.filename = filename; }
     public String getDestDir() { return destDir; }
@@ -64,6 +73,8 @@ public class SBSplitter {
     public void setCpFile(String cpFile) { this.cpFile = cpFile; }
     public String getCpScript() { return cpScript; }
     public void setCpScript(String cpScript) { this.cpScript = cpScript; }
+    public String getCpArg() { return cpArg; }
+    public void setCpArg(String cpArg) { this.cpArg = cpArg; }
     public String getCpClassesPrefix() { return cpClassesPrefix; }
     public void setCpClassesPrefix(String cpClassesPrefix) { this.cpClassesPrefix = cpClassesPrefix; }
     public String getCpAppPrefix() { return cpAppPrefix; }
@@ -203,50 +214,90 @@ public class SBSplitter {
     public List<String> loadCP() {
         List<String> rv = new ArrayList<>();
         File f = new File(destDir + cpFile);
-        if(!f.exists()) return rv;
-        try {
-            FileInputStream fis = new FileInputStream(f);
-            BufferedReader reader = new BufferedReader(new InputStreamReader(fis, "utf-8"));
-            String line = reader.readLine();
-            if(line != null) {
-                String[] data = line.split(":");
-                for(String string : data) {
+        if(f.exists()) {
+            try {
+                FileInputStream fis = new FileInputStream(f);
+                BufferedReader reader = new BufferedReader(new InputStreamReader(fis, "utf-8"));
+                String line = reader.readLine();
+                if(line != null) {
+                    String[] data = line.split(":");
+                    for(String string : data) {
+                        if(string == null) continue;
+                        string = string.trim();
+                        if("".equals(string)) continue;
+                        File ff = new File(string);
+                        rv.add(ff.getName());
+                    }
+                }
+            } catch(Exception e) { throw new IllegalArgumentException(e); }
+        } else {
+            try {
+                List<String> items = project.getRuntimeClasspathElements();
+                for(String string : items) {
                     if(string == null) continue;
                     string = string.trim();
                     if("".equals(string)) continue;
+                    if(string.endsWith("classes")) continue;
                     File ff = new File(string);
                     rv.add(ff.getName());
                 }
+            } catch(DependencyResolutionRequiredException ex) {
             }
-        } catch(Exception e) { throw new IllegalArgumentException(e); }
+        }
         return rv;
     }
     
     public void generateCPScript(List<String> cp, List<String> appFiles, List<String> libFiles) {
         StringBuilder sb = new StringBuilder();
+        StringBuilder sb2 = new StringBuilder();
+        
         sb.append("#!/bin/bash\n\n");
         sb.append("SBCP=").append(cpClassesPrefix).append("classes");
+        
+        sb2.append("-cp \"").append(cpClassesPrefix).append("classes").append("\\\n");
+        
         for(String string : cp) {
             if(appFiles.contains(string)) {
                 sb.append(":").append(cpAppPrefix).append(string);
+                sb2.append(":").append(cpAppPrefix).append(string).append("\\\n");
                 appFiles.remove(string);
             }
         }
-        for(String string : appFiles) { sb.append(":XX").append(cpAppPrefix).append(string); }
+        for(String string : appFiles) { 
+            sb.append(":").append(cpAppPrefix).append(string); 
+            sb2.append(":").append(cpAppPrefix).append(string).append("\\\n"); 
+        }
         for(String string : cp) {
             if(libFiles.contains(string)) {
                 sb.append(":").append(cpLibPrefix).append(string);
+                sb2.append(":").append(cpLibPrefix).append(string).append("\\\n");
                 libFiles.remove(string);
             }
         }
-        for(String string : libFiles) { sb.append(":XX").append(cpLibPrefix).append(string); }
+        for(String string : libFiles) { 
+            sb.append(":").append(cpLibPrefix).append(string); 
+            sb2.append(":").append(cpLibPrefix).append(string).append("\\\n"); 
+        }
+        
         sb.append("\n\nexport SBCP\n");
+        sb2.append("\"");
+        
         try {
             File f = new File(destDir + cpScript);
             File p = f.getParentFile();
             if(!p.exists()) p.mkdirs();
             FileOutputStream fos = new FileOutputStream(f);
             fos.write(sb.toString().getBytes("utf-8"));
+            fos.flush();
+            fos.close();
+        } catch(Exception e) { throw new IllegalArgumentException(e); }
+        
+        try {
+            File f = new File(destDir + cpArg);
+            File p = f.getParentFile();
+            if(!p.exists()) p.mkdirs();
+            FileOutputStream fos = new FileOutputStream(f);
+            fos.write(sb2.toString().getBytes("utf-8"));
             fos.flush();
             fos.close();
         } catch(Exception e) { throw new IllegalArgumentException(e); }
@@ -290,6 +341,7 @@ public class SBSplitter {
         sb.append("\n");
         sb.append("\ncpFile: ").append(cpFile);
         sb.append("\ncpScript: ").append(cpScript);
+        sb.append("\ncpArg: ").append(cpArg);
         sb.append("\ncpClassesPrefix: ").append(cpClassesPrefix);
         sb.append("\ncpAppPrefix: ").append(cpAppPrefix);
         sb.append("\ncpLibPrefix: ").append(cpLibPrefix);

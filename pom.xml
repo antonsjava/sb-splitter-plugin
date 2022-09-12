@@ -7,7 +7,7 @@
 
     <groupId>io.github.antonsjava</groupId>
     <artifactId>sb-splitter-plugin</artifactId>
-    <version>1.4</version>
+    <version>1.5</version>
     <packaging>maven-plugin</packaging>
     
     <name>sb-splitter-plugin</name>
