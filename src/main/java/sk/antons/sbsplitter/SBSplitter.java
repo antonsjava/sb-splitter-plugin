@@ -15,23 +15,12 @@
  */
 package sk.antons.sbsplitter;
 
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Set;
-import java.util.TreeSet;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
-import org.apache.maven.artifact.DependencyResolutionRequiredException;
-import org.apache.maven.plugin.logging.Log;
-import org.apache.maven.project.MavenProject;
 
 /**
  *
@@ -39,55 +28,36 @@ import org.apache.maven.project.MavenProject;
  */
 public class SBSplitter {
 
-    private MavenProject project;
-
     private String filename;
-    private String destDir; 
-    private String sourceLibFolder; 
-    private String destLibFolder; 
-    private String destAppFolder; 
-    
-    private String cpFile; 
-    private String cpScript; 
-    private String cpArg; 
-    private String cpClassesPrefix; 
-    private String cpAppPrefix; 
-    private String cpLibPrefix; 
-    
-    private String[] appModuleNames;
-    private String[] appModulePackages;
+    private String destDir;
 
-    public MavenProject getProject() { return project; }
-    public void setProject(MavenProject project) { this.project = project; }
-    public String getFilename() { return filename; }
-    public void setFilename(String filename) { this.filename = filename; }
-    public String getDestDir() { return destDir; }
-    public void setDestDir(String destDir) { this.destDir = destDir; }
-    public String getSourceLibFolder() { return sourceLibFolder; }
-    public void setSourceLibFolder(String sourceLibFolder) { this.sourceLibFolder = sourceLibFolder; }
-    public String getDestLibFolder() { return destLibFolder; }
-    public void setDestLibFolder(String destLibFolder) { this.destLibFolder = destLibFolder; }
-    public String getDestAppFolder() { return destAppFolder; }
-    public void setDestAppFolder(String destAppFolder) { this.destAppFolder = destAppFolder; }
-    public String getCpFile() { return cpFile; }
-    public void setCpFile(String cpFile) { this.cpFile = cpFile; }
-    public String getCpScript() { return cpScript; }
-    public void setCpScript(String cpScript) { this.cpScript = cpScript; }
-    public String getCpArg() { return cpArg; }
-    public void setCpArg(String cpArg) { this.cpArg = cpArg; }
-    public String getCpClassesPrefix() { return cpClassesPrefix; }
-    public void setCpClassesPrefix(String cpClassesPrefix) { this.cpClassesPrefix = cpClassesPrefix; }
-    public String getCpAppPrefix() { return cpAppPrefix; }
-    public void setCpAppPrefix(String cpAppPrefix) { this.cpAppPrefix = cpAppPrefix; }
-    public String getCpLibPrefix() { return cpLibPrefix; }
-    public void setCpLibPrefix(String cpLibPrefix) { this.cpLibPrefix = cpLibPrefix; }
-    public String[] getAppModuleNames() { return appModuleNames; }
-    public void setAppModuleNames(String[] appModuleNames) { this.appModuleNames = appModuleNames; }
-    public String[] getAppModulePackages() { return appModulePackages; }
-    public void setAppModulePackages(String[] appModulePackages) { this.appModulePackages = appModulePackages; }
+    private String appFolder = "app/";
+    private String classesFolder = "classes/";
+    private String libsFolder = "libs/";
+    private String snapshotsFolder = "snapshots/";
+    private String loaderFolder = "loader/";
+    private String metaFolder = "meta/";
 
 
-    
+    public static SBSplitter instance() { return new SBSplitter(); }
+    public String filename() { return filename; }
+    public SBSplitter filename(String value) { this.filename = value; return this; }
+    public String destDir() { return destDir; }
+    public SBSplitter destDir(String value) { this.destDir = value; return this; }
+    public String appFolder() { return appFolder; }
+    public SBSplitter appFolder(String value) { this.appFolder = value; return this; }
+    public String classesFolder() { return classesFolder; }
+    public SBSplitter classesFolder(String value) { this.classesFolder = value; return this; }
+    public String libsFolder() { return libsFolder; }
+    public SBSplitter libsFolder(String value) { this.libsFolder = value; return this; }
+    public String snapshotsFolder() { return snapshotsFolder; }
+    public SBSplitter snapshotsFolder(String value) { this.snapshotsFolder = value; return this; }
+    public String loaderFolder() { return loaderFolder; }
+    public SBSplitter loaderFolder(String value) { this.loaderFolder = value; return this; }
+    public String metaFolder() { return metaFolder; }
+    public SBSplitter metaFolder(String value) { this.metaFolder = value; return this; }
+
+
     private void unzip() {
         try {
             File dest = new File(destDir);
@@ -98,7 +68,8 @@ public class SBSplitter {
             while (zipEntry != null) {
                 if(zipEntry.isDirectory()) {
                 } else {
-                    File newFile = newFile(dest, zipEntry);
+                    String name = zipEntry.getName();
+                    File newFile = newFile(name);
                     FileOutputStream fos = new FileOutputStream(newFile);
                     int len;
                     while ((len = zis.read(buffer)) > 0) { fos.write(buffer, 0, len); }
@@ -109,267 +80,51 @@ public class SBSplitter {
             zis.closeEntry();
             zis.close();
         } catch(Exception e) { throw new IllegalArgumentException(e); }
-    }    
+    }
 
-    private File newFile(File destinationDir, ZipEntry zipEntry) throws IOException {
-        String fullname = zipEntry.getName();
-        File destFile = new File(destinationDir, fullname);
-         
-        String destDirPath = destinationDir.getCanonicalPath();
+    private File newFile(String name) throws IOException {
+        String fullname = destDir + appFolder;
+        String simpleName = fullname;
+        if(name.startsWith("BOOT-INF/lib/") && name.contains("-SNAPSHOT")) {
+            fullname = fullname + snapshotsFolder + name.substring(13);
+        } else if(name.startsWith("BOOT-INF/lib/")) {
+            fullname = fullname + libsFolder + name.substring(13);
+        } else if(name.startsWith("BOOT-INF/classes/")) {
+            fullname = fullname + classesFolder + name.substring(17);
+        } else if(name.startsWith("org/springframework")) {
+            fullname = fullname + loaderFolder + name;
+        } else {
+            fullname = fullname + metaFolder + name;
+        }
+
+
+        File destFile = new File(fullname);
+
         String destFilePath = destFile.getCanonicalPath();
-         
-        if (!destFilePath.startsWith(destDirPath + File.separator)) { throw new IllegalArgumentException("Entry is outside of the target dir: " + zipEntry.getName()); }
 
         File p = destFile.getParentFile();
         if(!p.exists()) p.mkdirs();
-         
+
         return destFile;
     }
 
-    private void listFiles(File folder, String prefix, List<String> list) {
-        File[] children = folder.listFiles();
-        if(children == null) return;
-        for(File file : children) {
-            String neprefix = file.getName();
-            if(prefix != null) neprefix = prefix + "/" + neprefix;
-            if(file.isDirectory()) {
-                listFiles(file, neprefix, list);
-            } else { list.add(neprefix); }
-        }
-    }
 
-    private boolean isApplicationModule(String filename) {
-        boolean rv = isApplicationModuleByName(filename);
-        if(rv) return true;
-        return isApplicationModuleByPackage(filename);
-    }
-    
-    private List<WildMatcher> wildMathers = null;
-    private List<WildMatcher> wildMathers() {
-        if(wildMathers == null) {
-            wildMathers = new ArrayList<>();
-            for(String appModuleName : appModuleNames) {
-                wildMathers.add(WildMatcher.instance(appModuleName));
-            }
-        }
-        return wildMathers;
-    }
-    private boolean isApplicationModuleByName(String filename) {
-        if(appModuleNames == null) return false;
-        for(String appName : appModuleNames) { if(appName.equals(filename)) return true; }
-        for(WildMatcher wm : wildMathers()) { if(wm.match(filename)) return true; }
-        return false;
-    }
-    
-    private boolean isApplicationModuleByPackage(String filename) {
-        if(appModulePackages == null) return false;
-        Set<String> packages = listPackages(filename);
-        for(String appName : appModulePackages) { if(packages.contains(appName)) return true; }
-        return false;
-    }
 
-    private Set<String> listPackages(String filename) {
-        Set<String> set = new TreeSet<>();
-        try {
-            filename = destDir + sourceLibFolder + filename;
-            byte[] buffer = new byte[1024];
-            ZipInputStream zis = new ZipInputStream(new FileInputStream(filename));
-            ZipEntry zipEntry = zis.getNextEntry();
-            while (zipEntry != null) {
-                if(zipEntry.isDirectory()) {
-                    String name = zipEntry.getName();
-                    name = name.replace('/', '.');
-                    if(name.startsWith(".")) name = name.substring(1);
-                    if(name.endsWith(".")) name = name.substring(0, name.length()-1);
-                    set.add(name);
-                }
-                zipEntry = zis.getNextEntry();
-            }
-            zis.closeEntry();
-            zis.close();
-        } catch(Exception e) { throw new IllegalArgumentException(e); }
-        return set;
-    }
-
-    public void moveFile(String oldname, String newname) {
-        if(oldname.equals(newname)) return;
-        try {
-            File f = new File(oldname);
-            File f2 = new File(newname);
-            File p = f2.getParentFile();
-            if(!p.exists()) p.mkdir();
-            FileInputStream is = new FileInputStream(f);
-            FileOutputStream os = new FileOutputStream(f2);
-            byte[] buffer = new byte[1024];
-            int length;
-            while ((length = is.read(buffer)) > 0) { os.write(buffer, 0, length); }
-            os.flush();
-            os.close();
-            is.close();
-            f.delete();
-        } catch(Exception e) { throw new IllegalArgumentException(e); }
-
-    }
-
-    public List<String> loadCP() {
-        List<String> rv = new ArrayList<>();
-        File f = new File(destDir + cpFile);
-        if(f.exists()) {
-            try {
-                FileInputStream fis = new FileInputStream(f);
-                BufferedReader reader = new BufferedReader(new InputStreamReader(fis, "utf-8"));
-                String line = reader.readLine();
-                if(line != null) {
-                    String[] data = line.split(":");
-                    for(String string : data) {
-                        if(string == null) continue;
-                        string = string.trim();
-                        if("".equals(string)) continue;
-                        File ff = new File(string);
-                        rv.add(ff.getName());
-                    }
-                }
-            } catch(Exception e) { throw new IllegalArgumentException(e); }
-        } else {
-            try {
-                List<String> items = project.getRuntimeClasspathElements();
-                for(String string : items) {
-                    if(string == null) continue;
-                    string = string.trim();
-                    if("".equals(string)) continue;
-                    if(string.endsWith("classes")) continue;
-                    File ff = new File(string);
-                    rv.add(ff.getName());
-                }
-            } catch(DependencyResolutionRequiredException ex) {
-            }
-        }
-        return rv;
-    }
-    
-    public void generateCPScript(List<String> cp, List<String> appFiles, List<String> libFiles) {
-        StringBuilder sb = new StringBuilder();
-        StringBuilder sb2 = new StringBuilder();
-        
-        sb.append("#!/bin/bash\n\n");
-        sb.append("SBCP=").append(cpClassesPrefix).append("classes");
-        
-        sb2.append("-cp \"").append(cpClassesPrefix).append("classes").append("\\\n");
-        
-        for(String string : cp) {
-            if(appFiles.contains(string)) {
-                sb.append(":").append(cpAppPrefix).append(string);
-                sb2.append(":").append(cpAppPrefix).append(string).append("\\\n");
-                appFiles.remove(string);
-            }
-        }
-        for(String string : appFiles) { 
-            sb.append(":").append(cpAppPrefix).append(string); 
-            sb2.append(":").append(cpAppPrefix).append(string).append("\\\n"); 
-        }
-        for(String string : cp) {
-            if(libFiles.contains(string)) {
-                sb.append(":").append(cpLibPrefix).append(string);
-                sb2.append(":").append(cpLibPrefix).append(string).append("\\\n");
-                libFiles.remove(string);
-            }
-        }
-        for(String string : libFiles) { 
-            sb.append(":").append(cpLibPrefix).append(string); 
-            sb2.append(":").append(cpLibPrefix).append(string).append("\\\n"); 
-        }
-        
-        sb.append("\n\nexport SBCP\n");
-        sb2.append("\"");
-        
-        try {
-            File f = new File(destDir + cpScript);
-            File p = f.getParentFile();
-            if(!p.exists()) p.mkdirs();
-            FileOutputStream fos = new FileOutputStream(f);
-            fos.write(sb.toString().getBytes("utf-8"));
-            fos.flush();
-            fos.close();
-        } catch(Exception e) { throw new IllegalArgumentException(e); }
-        
-        try {
-            File f = new File(destDir + cpArg);
-            File p = f.getParentFile();
-            if(!p.exists()) p.mkdirs();
-            FileOutputStream fos = new FileOutputStream(f);
-            fos.write(sb2.toString().getBytes("utf-8"));
-            fos.flush();
-            fos.close();
-        } catch(Exception e) { throw new IllegalArgumentException(e); }
-
-    }
-
-    public void split(Log log) {
+    public void split() {
         unzip();
-        log.info("[SB split] unzipped");
-        List<String> appFiles = new ArrayList<>();
-        List<String> libFiles = new ArrayList<>();
-        List<String> files = new ArrayList<>();
-        listFiles(new File(destDir + sourceLibFolder), null, files);
-        for(String name : files) {
-            String oldname = destDir + sourceLibFolder + name;
-            String newname = null;
-            if(isApplicationModule(name)) {
-                newname = destDir + destAppFolder + name;
-                appFiles.add(name);
-            } else {
-                newname = destDir + destLibFolder + name;
-                libFiles.add(name);
-            }
-            moveFile(oldname, newname);
-        }
-        log.info("[SB split] lib modules splitted. lib count: " + libFiles.size() + " app count: " + appFiles.size());
-        List<String> cp = loadCP();
-        generateCPScript(cp, appFiles, libFiles);
-        log.info("[SB split] classpath script generated");
-        updateModificationDate(new File(destDir + destLibFolder), 0);
-        log.info("[SB split] lib modules freeze modification time");
     }
 
     public String config() {
         StringBuilder sb = new StringBuilder();
         sb.append("\nsbFile: ").append(filename);
         sb.append("\ndestDir: ").append(destDir);
-        sb.append("\nsourceLibFolder: ").append(sourceLibFolder);
-        sb.append("\ndestLibFolder: ").append(destLibFolder);
-        sb.append("\ndestAppFolder: ").append(destAppFolder);
-        sb.append("\n");
-        sb.append("\ncpFile: ").append(cpFile);
-        sb.append("\ncpScript: ").append(cpScript);
-        sb.append("\ncpArg: ").append(cpArg);
-        sb.append("\ncpClassesPrefix: ").append(cpClassesPrefix);
-        sb.append("\ncpAppPrefix: ").append(cpAppPrefix);
-        sb.append("\ncpLibPrefix: ").append(cpLibPrefix);
-        if((appModuleNames != null) && (appModuleNames.length > 0)) {
-            sb.append("\n");
-            for(String appModuleName : appModuleNames) {
-                sb.append("\nappModuleName: ").append(appModuleName);
-            }
-        }
-        if((appModulePackages != null) && (appModulePackages.length > 0)) {
-            sb.append("\n");
-            for(String appModuleName : appModulePackages) {
-                sb.append("\nappModulePackage: ").append(appModuleName);
-            }
-        }
-    
+        sb.append("\nappFolder: ").append(appFolder);
+        sb.append("\nlibsFolder: ").append(libsFolder);
+        sb.append("\nsnapshotsFolder: ").append(snapshotsFolder);
+        sb.append("\nloaderFolder: ").append(loaderFolder);
+        sb.append("\nmetaFolder: ").append(metaFolder);
         return sb.toString();
     }
-    
-    private void updateModificationDate(File folder, long time) {
-        folder.setLastModified(time);
-        File[] children = folder.listFiles();
-        if(children == null) return;
-        for(File file : children) {
-            file.setLastModified(time);
-            if(file.isDirectory()) {
-                updateModificationDate(file, time);
-            }
-        }
-    }
+
+
 }

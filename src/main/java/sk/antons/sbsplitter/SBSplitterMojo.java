@@ -16,6 +16,9 @@
 package sk.antons.sbsplitter;
 
 
+import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugins.annotations.LifecyclePhase;
@@ -31,118 +34,99 @@ public class SBSplitterMojo extends AbstractMojo {
 
     @Parameter(defaultValue = "${project}", readonly = true, required = true)
     private MavenProject project;
-    
+
+    @Parameter(property = "dockerFile", defaultValue = "src/main/docker/Dockerfile", required = false )
+    private String dockerFile;
     @Parameter(property = "sbFile", defaultValue = "target/${project.build.finalName}.jar", required = false )
     private String filename;
     @Parameter(property = "destDir", defaultValue = "target/sb/", required = false )
-    private String destDir; 
-    @Parameter(property = "sourceLibFolder", defaultValue = "BOOT-INF/lib/", required = false )
-    private String sourceLibFolder; 
-    @Parameter(property = "destLibFolder", defaultValue = "BOOT-INF/lib/", required = false )
-    private String destLibFolder; 
-    @Parameter(property = "destAppFolder", defaultValue = "BOOT-INF/app/", required = false )
-    private String destAppFolder; 
-    
-    @Parameter(property = "cpFile", defaultValue = "BOOT-INF/classes/classpath.txt", required = false )
-    private String cpFile; 
-    @Parameter(property = "cpScript", defaultValue = "BOOT-INF/assembly/classpath.sh", required = false )
-    private String cpScript; 
-    @Parameter(property = "cpArg", defaultValue = "BOOT-INF/assembly/cp.arg", required = false )
-    private String cpArg; 
-    @Parameter(property = "cpClassesPrefix", defaultValue = "./", required = false )
-    private String cpClassesPrefix; 
-    @Parameter(property = "cpAppPrefix", defaultValue = "app/", required = false )
-    private String cpAppPrefix; 
-    @Parameter(property = "cpLibPrefix", defaultValue = "lib/", required = false )
-    private String cpLibPrefix; 
-    
-    @Parameter(property = "appModuleNames", required = false )
-    private String[] appModuleNames = null;
-    @Parameter(property = "appModulePackages", required = false )
-    private String[] appModulePackages = null;
-    
+    private String destDir;
+
+    @Parameter(property = "appDir", defaultValue = "app/", required = false )
+    private String appFolder;
+    @Parameter(property = "libsDir", defaultValue = "libs/", required = false )
+    private String libsFolder;
+    @Parameter(property = "snapshotsDir", defaultValue = "snapshots/", required = false )
+    private String snapshotsFolder;
+    @Parameter(property = "loaderDir", defaultValue = "loader/", required = false )
+    private String loaderFolder;
+    @Parameter(property = "metaDir", defaultValue = "meta/", required = false )
+    private String metaFolder;
+
+
     @Parameter(property = "copies", required = false )
     private Copy[] copies = null;
-    
+
 	private static String initProperty(String value, String defaultValue, boolean endswithslash) {
 		if(value == null) value = defaultValue;
-		if(endswithslash && (!value.endsWith("/"))) value = value + "/"; 
+		if(endswithslash && (!value.endsWith("/"))) value = value + "/";
         return value;
 	}
 
 	private void initProperties() {
-        
+
         destDir = initProperty(destDir, "target/sb/", true);
-        sourceLibFolder = initProperty(sourceLibFolder, "BOOT-INF/lib/", true);
-        destLibFolder = initProperty(destLibFolder, "BOOT-INF/lib/", true);
-        destAppFolder = initProperty(destAppFolder, "BOOT-INF/app/", true);
-    
-        cpFile = initProperty(cpFile, "BOOT-INF/classes/classpath.txt", false);
-        cpScript = initProperty(cpScript, "BOOT-INF/assembly/classpath.sh", false);
-        cpArg = initProperty(cpArg, "BOOT-INF/assembly/cp.arg", false);
-        cpClassesPrefix = initProperty(cpClassesPrefix, "./", true);
-        cpAppPrefix = initProperty(cpAppPrefix, "app/", true);
-        cpLibPrefix = initProperty(cpLibPrefix, "lib/", true);
-		
+        appFolder = initProperty(appFolder, "app/", true);
+        libsFolder = initProperty(libsFolder, "libs/", true);
+        snapshotsFolder = initProperty(snapshotsFolder, "snapshots/", true);
+        loaderFolder = initProperty(loaderFolder, "loader/", true);
+        metaFolder = initProperty(metaFolder, "meta/", true);
+
 	}
 
     public void execute() throws MojoExecutionException {
         initProperties();
-        SBSplitter splitter = new SBSplitter();
-        splitter.setProject(project);
-        splitter.setAppModuleNames(appModuleNames);
-        splitter.setAppModulePackages(appModulePackages);
-        splitter.setCpAppPrefix(cpAppPrefix);
-        splitter.setCpClassesPrefix(cpClassesPrefix);
-        splitter.setCpFile(cpFile);
-        splitter.setCpLibPrefix(cpLibPrefix);
-        splitter.setCpScript(cpScript);
-        splitter.setCpArg(cpArg);
-        splitter.setDestAppFolder(destAppFolder);
-        splitter.setDestDir(destDir);
-        splitter.setDestLibFolder(destLibFolder);
-        splitter.setFilename(filename);
-        splitter.setSourceLibFolder(sourceLibFolder);
+        SBSplitter splitter = SBSplitter.instance()
+            .filename(filename)
+            .destDir(destDir)
+            .appFolder(appFolder)
+            .libsFolder(libsFolder)
+            .snapshotsFolder(snapshotsFolder)
+            .loaderFolder(loaderFolder)
+            .metaFolder(metaFolder);
         printConf();
-        getLog().info("[SB split] splitting " + splitter.getFilename() + " to " + splitter.getDestDir());
-        splitter.split(getLog());
+        getLog().info("[SB split] splitting " + splitter.filename()+ " to " + splitter.destDir());
+        splitter.split();
         getLog().info("[SB split] splitting done");
+        SBEnhancer enhancer = SBEnhancer.instance()
+            .project(project)
+            .filename(filename)
+            .destDir(destDir)
+            .appFolder(appFolder)
+            .libsFolder(libsFolder)
+            .snapshotsFolder(snapshotsFolder)
+            .loaderFolder(loaderFolder)
+            .metaFolder(metaFolder);
+        enhancer.enhance(getLog());
+        getLog().info("[SB split] enhancing done");
         if(copies != null) {
             for(Copy copy : copies) {
                 getLog().info("");
                 copy.copy(getLog());
             }
         }
-        
+
+        try {
+            File f = new File(dockerFile);
+            if(f.exists()) Files.copy(f.toPath(), new File(destDir + "/Dockerfile").toPath(), StandardCopyOption.REPLACE_EXISTING);
+            getLog().info("[SB split] docker file replaced");
+        } catch(Exception e) {
+            throw new IllegalStateException("unable to copy Dockerfile " + dockerFile, e);
+        }
+
+
     }
 
     private void printConf() {
         getLog().info("[SB split] conf sbFile: " + filename);
         getLog().info("[SB split] conf destDir: " + destDir);
-        getLog().info("[SB split] conf sourceLibFolder: " + sourceLibFolder);
-        getLog().info("[SB split] conf destLibFolder: " + destLibFolder);
-        getLog().info("[SB split] conf destAppFolder: " + destAppFolder);
         getLog().info("");
-        getLog().info("[SB split] conf cpFile: " + cpFile);
-        getLog().info("[SB split] conf cpScript: " + cpScript);
-        getLog().info("[SB split] conf cpArg: " + cpArg);
-        getLog().info("[SB split] conf cpClassesPrefix: " + cpClassesPrefix);
-        getLog().info("[SB split] conf cpAppPrefix: " + cpAppPrefix);
-        getLog().info("[SB split] conf cpLibPrefix: " + cpLibPrefix);
-
-        if((appModuleNames != null) && (appModuleNames.length > 0)) {
-            getLog().info("");
-            for(String appModuleName : appModuleNames) {
-                getLog().info("[SB split] conf appModuleName: " + appModuleName);
-            }
-        }
-
-        if((appModulePackages != null) && (appModulePackages.length > 0)) {
-            getLog().info("");
-            for(String appModuleName : appModulePackages) {
-                getLog().info("[SB split] conf appModulePackage: " + appModuleName);
-            }
-        }
+        getLog().info("[SB split] conf appFolder: " + appFolder);
+        getLog().info("[SB split] conf libsFolder: " + libsFolder);
+        getLog().info("[SB split] conf snapshotsFolder: " + snapshotsFolder);
+        getLog().info("[SB split] conf loaderFolder: " + loaderFolder);
+        getLog().info("[SB split] conf metaFolder: " + metaFolder);
+        getLog().info("");
 
         if((copies != null) && (copies.length > 0)) {
             getLog().info("");
