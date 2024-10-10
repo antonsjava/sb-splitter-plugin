@@ -71,7 +71,8 @@ public class SBEnhancer {
         log.info("[SB split] classpath script generated");
         generateStartScript();
         log.info("[SB split] dummy start script generated");
-        generateDockerfile();
+        generateDockerfile1();
+        generateDockerfile2();
         log.info("[SB split] dummy docker file generated");
         updateModificationDate(new File(destDir + appFolder + libsFolder), 0);
         log.info("[SB split] lib modules freeze modification time");
@@ -134,7 +135,7 @@ public class SBEnhancer {
         return value;
     }
 
-    public void generateDockerfile() {
+    public void generateDockerfile1() {
         String startclass = "Application";
         File meta = new File(destDir + appFolder + metaFolder + "/META-INF/MANIFEST.MF");
         if(meta.exists()) {
@@ -167,10 +168,60 @@ public class SBEnhancer {
         sb.append("ENTRYPOINT [\"java\", \"-Djava.security.egd=file:/dev/./urandom\", \"@cp.arg\", \"").append(startclass).append("\"]\n");
 
         try {
+            File f = new File(destDir + "/Dockerfile.template1");
+            File p = f.getParentFile();
+            if(!p.exists()) p.mkdirs();
+            FileOutputStream fos = new FileOutputStream(f);
+            fos.write(sb.toString().getBytes("utf-8"));
+            fos.flush();
+            fos.close();
+        } catch(Exception e) { throw new IllegalArgumentException(e); }
+
+    }
+
+    public void generateDockerfile2() {
+        String startclass = "Application";
+        File meta = new File(destDir + appFolder + metaFolder + "/META-INF/MANIFEST.MF");
+        if(meta.exists()) {
+            try(FileInputStream fis = new FileInputStream(meta);) {
+                BufferedReader reader = new BufferedReader(new InputStreamReader(fis, "utf-8"));
+                String line = reader.readLine();
+                while(line != null) {
+                    if(line.startsWith("Start-Class: ")) {
+                        startclass = line.substring(13);
+                        break;
+                    }
+                    line = reader.readLine();
+                }
+            } catch(Exception e) { throw new IllegalArgumentException(e); }
+        }
+
+        StringBuilder sb = new StringBuilder();
+
+        sb.append("FROM eclipse-temurin:21-jdk-alpine\n");
+        sb.append("\n");
+        sb.append("COPY ./").append(appFolder).append(libsFolder).append(" /app/BOOT-INF/lib/").append("\n");
+        sb.append("COPY ./").append(appFolder).append(loaderFolder).append(" /app/").append("\n");
+        sb.append("COPY ./").append(appFolder).append(snapshotsFolder).append(" /app/BOOT-INF/lib/").append("\n");
+        sb.append("COPY ./").append(appFolder).append(metaFolder).append(" /app/").append("\n");
+        sb.append("COPY ./").append(appFolder).append(classesFolder).append(" /app/BOOT-INF/classes/").append("\n");
+        sb.append("\n");
+        sb.append("WORKDIR /app\n");
+        sb.append("\n");
+        sb.append("ENTRYPOINT [\"java\", \"-Djava.security.egd=file:/dev/./urandom\", \"org.springframework.boot.loader.launch.JarLauncher\"]\n");
+
+        try {
             File f = new File(destDir + "/Dockerfile");
             File p = f.getParentFile();
             if(!p.exists()) p.mkdirs();
             FileOutputStream fos = new FileOutputStream(f);
+            fos.write(sb.toString().getBytes("utf-8"));
+            fos.flush();
+            fos.close();
+            f = new File(destDir + "/Dockerfile.template2");
+            p = f.getParentFile();
+            if(!p.exists()) p.mkdirs();
+            fos = new FileOutputStream(f);
             fos.write(sb.toString().getBytes("utf-8"));
             fos.flush();
             fos.close();
