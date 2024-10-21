@@ -60,6 +60,7 @@ public class SBSplitter {
 
     private void unzip() {
         try {
+            initFolders();
             File dest = new File(destDir);
             if(!dest.exists()) dest.mkdirs();
             byte[] buffer = new byte[1024];
@@ -108,6 +109,14 @@ public class SBSplitter {
         return destFile;
     }
 
+    private void initFolders() throws IOException {
+        String[] folders = new String[]{snapshotsFolder, libsFolder, classesFolder, loaderFolder, metaFolder};
+        for(String folder : folders) {
+            String fullname = destDir + appFolder + folder;
+            File p = new File(fullname);
+            if(!p.exists()) p.mkdirs();
+        }
+    }
 
 
     public void split() {
